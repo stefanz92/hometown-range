@@ -1,0 +1,1305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Hometown Range</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800;900&family=Overpass+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sign:#1D3F8F; --sign-deep:#132B63; --chalk:#FBFBF8; --cone:#F2711C; --cone-deep:#C9560F;
+  --sky:#C6D4DE; --ink:#16202E; --muted:#56637A; --soft:#E6EBF1; --edge:#C9D3DD;
+  --font:"Overpass", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono:"Overpass Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;background:var(--sky);color:var(--ink);font-family:var(--font);overflow:hidden;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+/* ---------- overlay screens ---------- */
+#overlay{position:fixed;inset:0;z-index:20;display:flex;overflow-y:auto;padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom))}
+#overlay.map{
+  background-color:#D2DBE2;
+  background-image:
+    linear-gradient(90deg,rgba(255,255,255,.75) 0 7px,transparent 7px),
+    linear-gradient(0deg,rgba(255,255,255,.75) 0 7px,transparent 7px),
+    linear-gradient(90deg,rgba(255,255,255,.45) 0 3px,transparent 3px),
+    linear-gradient(0deg,rgba(255,255,255,.45) 0 3px,transparent 3px),
+    linear-gradient(62deg,transparent calc(50% - 6px),rgba(160,184,204,.9) calc(50% - 6px) calc(50% + 6px),transparent calc(50% + 6px));
+  background-size:168px 168px,132px 132px,56px 56px,44px 44px,760px 520px;
+  background-position:0 0,40px 20px,12px 30px,0 8px,0 0;
+}
+#overlay.scrim{background:rgba(19,43,99,.34)}
+.card{margin:auto;width:100%;max-width:430px;background:var(--chalk);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 50px rgba(19,43,99,.28),0 2px 0 rgba(19,43,99,.1)}
+.sign{background:var(--sign);color:#fff;border-radius:10px;padding:14px 16px 11px;box-shadow:inset 0 0 0 3px var(--sign),inset 0 0 0 5px #fff}
+.sign .eyebrow{display:block;font:700 11px/1 var(--font);letter-spacing:.16em;text-transform:uppercase;opacity:.85}
+.sign h1,.sign h2{margin:7px 0 0;font:900 clamp(30px,8.5vw,40px)/1 var(--font);letter-spacing:-.01em;text-wrap:balance}
+.sign h2{font-size:clamp(24px,7vw,32px)}
+.lede{margin:0;font:400 15px/1.5 var(--font);color:var(--muted)}
+.lede b{color:var(--ink);font-weight:600}
+.label{font:800 11.5px/1 var(--font);letter-spacing:.12em;text-transform:uppercase;color:var(--sign)}
+form{display:flex;flex-direction:column;gap:8px;margin:0}
+.field{display:flex;gap:8px}
+input[type=text]{flex:1;min-width:0;font:600 17px/1.2 var(--font);padding:12px 12px 10px;border:2px solid var(--edge);border-radius:10px;background:#fff;color:var(--ink);-webkit-user-select:text;user-select:text}
+input[type=text]:focus{outline:none;border-color:var(--sign);box-shadow:0 0 0 3px rgba(29,63,143,.18)}
+.btn{font:800 16px/1 var(--font);padding:13px 16px 11px;border-radius:10px;border:0;cursor:pointer;white-space:nowrap}
+.btn:focus-visible,.chip:focus-visible,#btnMenu:focus-visible,#btnFire:focus-visible{outline:3px solid var(--cone);outline-offset:2px}
+.btn-go{background:var(--cone);color:#fff}
+.btn-go:hover{background:var(--cone-deep)}
+.btn-go:disabled{opacity:.55;cursor:default}
+.btn-line{background:#fff;color:var(--sign);box-shadow:inset 0 0 0 2px var(--edge)}
+.btn-line:hover{box-shadow:inset 0 0 0 2px var(--sign)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row .btn{flex:1 1 auto}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:600 13px/1 var(--font);padding:8px 11px 6px;border-radius:999px;border:0;background:var(--soft);color:var(--sign);cursor:pointer}
+.chip:hover{background:#D7E0EA}
+.log{margin:0;padding:0;list-style:none;font:500 12.5px/1.7 var(--mono);color:var(--muted)}
+.log li::before{content:"· ";color:var(--cone)}
+.log li.done::before{content:"✓ ";color:#2E7D4F}
+.err{margin:0;padding:10px 12px;border-radius:10px;background:#FBE9E6;color:#8E2418;font:600 14px/1.45 var(--font)}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.fact{background:var(--soft);border-radius:10px;padding:10px 10px 8px}
+.fact b{display:block;font:700 18px/1.1 var(--mono);color:var(--sign);font-variant-numeric:tabular-nums}
+.fact span{display:block;margin-top:4px;font:600 11px/1.2 var(--font);color:var(--muted);letter-spacing:.04em}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:7px 12px;align-items:center;font:400 14px/1.3 var(--font);color:var(--ink)}
+kbd{display:inline-block;font:700 11.5px/1 var(--mono);background:var(--soft);color:var(--sign);padding:5px 6px 3px;border-radius:5px;border-bottom:2px solid var(--edge)}
+.fine{margin:0;font:400 12px/1.45 var(--font);color:var(--muted)}
+.fine a{color:var(--sign)}
+
+/* ---------- HUD ---------- */
+#hud{position:fixed;inset:0;z-index:10;pointer-events:none}
+.plate{position:absolute;left:12px;top:calc(env(safe-area-inset-top,0px) + 12px);max-width:min(62vw,340px);background:var(--sign);color:#fff;border-radius:8px;padding:7px 12px 5px;box-shadow:inset 0 0 0 2px var(--sign),inset 0 0 0 3.5px #fff,0 4px 14px rgba(0,0,0,.22)}
+.plate small{display:block;font:800 9.5px/1 var(--font);letter-spacing:.16em;text-transform:uppercase;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plate b{display:block;margin-top:3px;font:800 18px/1.15 var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stats{position:absolute;left:12px;top:calc(env(safe-area-inset-top,0px) + 68px);display:flex;gap:10px;padding:6px 9px 4px;border-radius:6px;background:rgba(19,43,99,.62);color:#fff;font:700 13px/1 var(--mono);font-variant-numeric:tabular-nums}
+.stats em{font-style:normal;color:#FFB27A}
+#btnMenu{position:absolute;right:12px;top:calc(env(safe-area-inset-top,0px) + 12px);pointer-events:auto;font:800 13px/1 var(--font);padding:9px 12px 7px;border-radius:8px;border:0;background:rgba(251,251,248,.92);color:var(--sign);cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.18)}
+#radar{position:absolute;right:12px;top:calc(env(safe-area-inset-top,0px) + 54px);width:92px;height:92px}
+#cross{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;transition:transform .12s}
+#cross i{position:absolute;background:#fff;box-shadow:0 0 0 1px rgba(19,43,99,.55)}
+#cross i:nth-child(1){left:12px;top:0;width:2px;height:8px}
+#cross i:nth-child(2){left:12px;bottom:0;width:2px;height:8px}
+#cross i:nth-child(3){top:12px;left:0;height:2px;width:8px}
+#cross i:nth-child(4){top:12px;right:0;height:2px;width:8px}
+#cross.hit{transform:rotate(45deg) scale(1.25)}
+#cross.hit i{background:var(--cone)}
+#toast{position:absolute;left:50%;top:calc(50% + 34px);transform:translateX(-50%);font:800 14px/1 var(--font);color:#fff;background:rgba(19,43,99,.72);padding:7px 11px 5px;border-radius:6px;white-space:nowrap;opacity:0;transition:opacity .25s}
+#toast.show{opacity:1}
+#stick{position:absolute;left:28px;bottom:calc(env(safe-area-inset-bottom,0px) + 34px);width:118px;height:118px;border-radius:50%;border:2px solid rgba(255,255,255,.7);background:rgba(19,43,99,.2)}
+#knob{position:absolute;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;background:rgba(251,251,248,.88);box-shadow:0 2px 8px rgba(0,0,0,.25)}
+#btnFire{position:absolute;right:26px;bottom:calc(env(safe-area-inset-bottom,0px) + 44px);width:86px;height:86px;border-radius:50%;border:3px solid #fff;background:var(--cone);color:#fff;font:900 14px/1 var(--font);letter-spacing:.08em;pointer-events:auto;touch-action:none;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.28)}
+#btnFire:active{background:var(--cone-deep)}
+.touch-only{display:none!important}
+body.touch .touch-only{display:block!important}
+#attrib{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 6px);font:600 10px/1 var(--font);color:rgba(22,32,46,.8);background:rgba(251,251,248,.72);padding:4px 6px 2px;border-radius:4px;white-space:nowrap}
+@media (prefers-reduced-motion:reduce){#cross,#toast{transition:none}}
+</style>
+</head>
+<body>
+<canvas id="gl" aria-label="3D city view"></canvas>
+
+<div id="hud" hidden>
+  <div class="plate"><small id="hudCity">Leeuwarden</small><b id="hudStreet">—</b></div>
+  <div class="stats"><span><em id="hudLeft">10</em> targets left</span><span id="hudTime">0:00</span></div>
+  <button id="btnMenu" type="button">Menu</button>
+  <canvas id="radar" width="184" height="184" aria-hidden="true"></canvas>
+  <div id="cross"><i></i><i></i><i></i><i></i></div>
+  <div id="toast"></div>
+  <div id="stick" class="touch-only"><div id="knob"></div></div>
+  <button id="btnFire" class="touch-only" type="button" aria-label="Shoot">FIRE</button>
+  <div id="attrib">© OpenStreetMap contributors</div>
+</div>
+
+<div id="overlay" class="map">
+  <!-- start -->
+  <section class="card" id="scrStart">
+    <div class="sign"><span class="eyebrow">Real streets · open map data</span><h1>Hometown Range</h1></div>
+    <p class="lede">Type a town, a street or a landmark. The buildings around it load from OpenStreetMap, and you clear <b>10 targets</b> hidden in its streets.</p>
+    <form id="placeForm" autocomplete="off">
+      <label class="label" for="place">Place</label>
+      <div class="field">
+        <input id="place" type="text" name="place" value="Leeuwarden" placeholder="Leeuwarden, a street or a landmark" enterkeyhint="go" spellcheck="false">
+        <button class="btn btn-go" id="btnLoad" type="submit">Load</button>
+      </div>
+    </form>
+    <div class="chips" id="chips">
+      <button class="chip" type="button">Leeuwarden</button>
+      <button class="chip" type="button">Dokkum</button>
+      <button class="chip" type="button">Oldehove, Leeuwarden</button>
+      <button class="chip" type="button">Groningen</button>
+      <button class="chip" type="button">Dam, Amsterdam</button>
+      <button class="chip" type="button">Times Square</button>
+    </div>
+    <ul class="log" id="log" hidden></ul>
+    <p class="err" id="err" hidden></p>
+  </section>
+
+  <!-- ready -->
+  <section class="card" id="scrReady" hidden>
+    <div class="sign"><span class="eyebrow" id="readyRegion">Friesland</span><h2 id="readyName">Leeuwarden</h2></div>
+    <div class="facts">
+      <div class="fact"><b id="fBuild">0</b><span>buildings</span></div>
+      <div class="fact"><b id="fKm">0</b><span>km of streets</span></div>
+      <div class="fact"><b>840 m</b><span>across</span></div>
+    </div>
+    <div class="keys" id="keysDesk">
+      <span><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></span><span>Walk, <kbd>Shift</kbd> to run</span>
+      <span><kbd>Mouse</kbd></span><span>Look around</span>
+      <span><kbd>Click</kbd></span><span>Shoot (hold for rapid fire)</span>
+      <span><kbd>Esc</kbd></span><span>Pause</span>
+    </div>
+    <div class="keys" id="keysTouch" hidden>
+      <span><kbd>Left thumb</kbd></span><span>Walk, push to the edge to run</span>
+      <span><kbd>Right thumb</kbd></span><span>Drag to look around</span>
+      <span><kbd>FIRE</kbd></span><span>Shoot (hold for rapid fire)</span>
+    </div>
+    <p class="fine">The radar in the corner shows the targets. Heights and facades are estimated when the map has no data for them.</p>
+    <div class="row"><button class="btn btn-go" id="btnStart" type="button">Start</button><button class="btn btn-line" id="btnOther1" type="button">Another place</button></div>
+  </section>
+
+  <!-- pause -->
+  <section class="card" id="scrPause" hidden>
+    <div class="sign"><span class="eyebrow" id="pausePlace">Leeuwarden</span><h2>Paused</h2></div>
+    <p class="lede" id="pauseInfo"></p>
+    <div class="row"><button class="btn btn-go" id="btnResume" type="button">Resume</button><button class="btn btn-line" id="btnRestart" type="button">New round</button></div>
+    <div class="row"><button class="btn btn-line" id="btnOther2" type="button">Another place</button><button class="btn btn-line" id="btnSound" type="button">Sound: on</button></div>
+  </section>
+
+  <!-- done -->
+  <section class="card" id="scrDone" hidden>
+    <div class="sign"><span class="eyebrow" id="donePlace">Leeuwarden</span><h2>All targets down</h2></div>
+    <div class="facts">
+      <div class="fact"><b id="dTime">0:00</b><span>your time</span></div>
+      <div class="fact"><b id="dBest">–</b><span>best here</span></div>
+      <div class="fact"><b id="dAcc">0%</b><span>accuracy</span></div>
+    </div>
+    <div class="row"><button class="btn btn-go" id="btnAgain" type="button">Play again</button><button class="btn btn-line" id="btnOther3" type="button">Another place</button></div>
+  </section>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* =========================================================
+   Settings
+   ========================================================= */
+const RADIUS = 420;          // metres of city loaded around the place
+const TARGET_COUNT = 10;
+const EYE = 1.7, PLAYER_R = 0.42, WALK = 5.2, RUN = 9.5;
+const FOG = [0.776, 0.831, 0.871];
+const OVERPASS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
+];
+
+const $ = s => document.querySelector(s);
+const canvas = $('#gl');
+const overlay = $('#overlay');
+const screens = { start: $('#scrStart'), ready: $('#scrReady'), pause: $('#scrPause'), done: $('#scrDone') };
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+};
+
+/* =========================================================
+   Small helpers
+   ========================================================= */
+const clamp = (v,a,b) => v < a ? a : v > b ? b : v;
+const hex = h => { const n = parseInt(h.slice(1),16); return [(n>>16&255)/255,(n>>8&255)/255,(n&255)/255]; };
+function hash(n){ n = (Math.floor(n) % 2147483647) | 0; n = (n ^ 61) ^ (n >>> 16); n = n + (n << 3) | 0; n = n ^ (n >>> 4); n = Math.imul(n, 0x27d4eb2d); n = n ^ (n >>> 15); return (n >>> 0) / 4294967296; }
+function num(v){ if (v == null) return NaN; const m = String(v).replace(',', '.').match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : NaN; }
+function fmtTime(s){ const m = Math.floor(s/60), r = s - m*60; return m + ':' + (r < 10 ? '0' : '') + r.toFixed(1); }
+function fmtClock(s){ const m = Math.floor(s/60), r = Math.floor(s - m*60); return m + ':' + (r < 10 ? '0' : '') + r; }
+
+/* =========================================================
+   Matrices (column-major)
+   ========================================================= */
+function perspective(fovy, aspect, near, far){
+  const f = 1/Math.tan(fovy/2), nf = 1/(near-far);
+  return new Float32Array([f/aspect,0,0,0, 0,f,0,0, 0,0,(far+near)*nf,-1, 0,0,2*far*near*nf,0]);
+}
+function lookAt(e, c, u){
+  let zx=e[0]-c[0], zy=e[1]-c[1], zz=e[2]-c[2]; let l=Math.hypot(zx,zy,zz); zx/=l; zy/=l; zz/=l;
+  let xx=u[1]*zz-u[2]*zy, xy=u[2]*zx-u[0]*zz, xz=u[0]*zy-u[1]*zx; l=Math.hypot(xx,xy,xz)||1; xx/=l; xy/=l; xz/=l;
+  const yx=zy*xz-zz*xy, yy=zz*xx-zx*xz, yz=zx*xy-zy*xx;
+  return new Float32Array([xx,yx,zx,0, xy,yy,zy,0, xz,yz,zz,0,
+    -(xx*e[0]+xy*e[1]+xz*e[2]), -(yx*e[0]+yy*e[1]+yz*e[2]), -(zx*e[0]+zy*e[1]+zz*e[2]), 1]);
+}
+function mul(a, b){
+  const o = new Float32Array(16);
+  for (let i=0;i<4;i++) for (let j=0;j<4;j++){ let s=0; for (let k=0;k<4;k++) s += a[k*4+j]*b[i*4+k]; o[i*4+j]=s; }
+  return o;
+}
+
+/* =========================================================
+   WebGL setup
+   ========================================================= */
+const glOpts = { antialias:true, stencil:true, alpha:false, powerPreference:'high-performance' };
+const gl = canvas.getContext('webgl', glOpts) || canvas.getContext('experimental-webgl', glOpts);
+
+const VS = `attribute vec3 aPos;attribute vec3 aNor;attribute vec3 aCol;attribute vec3 aAux;
+uniform mat4 uVP;varying vec3 vNor;varying vec3 vCol;varying vec3 vAux;varying vec3 vW;
+void main(){vW=aPos;vNor=aNor;vCol=aCol;vAux=aAux;gl_Position=uVP*vec4(aPos,1.0);}`;
+
+// Modes (aAux.z): 0 plain, 1 homes facade, 2 shops facade, 4 water, 5 target, 6 glow
+const FS = `#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec3 vNor;varying vec3 vCol;varying vec3 vAux;varying vec3 vW;
+uniform vec3 uEye;uniform vec3 uFog;uniform vec2 uFogR;uniform vec3 uLight;uniform float uTime;
+float h21(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
+void main(){
+  vec3 n=normalize(vNor); vec3 base=vCol; float m=vAux.z; float dist=length(vW-uEye);
+  float glassAmt=0.0;
+  if(m>0.5&&m<2.5){
+    vec2 g=vAux.xy; vec2 f=fract(g); float fl=floor(g.y);
+    float detail=1.0-smoothstep(60.0,170.0,dist);
+    vec4 r=vec4(0.30,0.30,0.70,0.80);
+    if(m>1.5&&fl<0.5) r=vec4(0.07,0.05,0.93,0.84);
+    float win=step(r.x,f.x)*step(f.x,r.z)*step(r.y,f.y)*step(f.y,r.w);
+    float frm=step(r.x-0.05,f.x)*step(f.x,r.z+0.05)*step(r.y-0.05,f.y)*step(f.y,r.w+0.05);
+    float ledge=step(f.y,0.035)*step(0.5,fl);
+    float hh=h21(floor(g)+vCol.rg*57.0);
+    vec3 glass=mix(vec3(0.12,0.16,0.21),vec3(0.46,0.55,0.63),smoothstep(r.y,r.w,f.y)*0.9);
+    glass=mix(glass,vec3(0.98,0.84,0.55),step(0.94,hh)*0.55);
+    vec3 frame=mix(base,vec3(0.94,0.93,0.89),0.75);
+    vec3 fac=mix(base,base*0.8,ledge);
+    fac=mix(fac,frame,frm); fac=mix(fac,glass,win);
+    base=mix(base*0.9,fac,detail); glassAmt=win*detail;
+  } else if(m>3.5&&m<4.5){
+    float w=sin(vW.x*0.55+uTime*1.1)*sin(vW.z*0.7-uTime*0.8);
+    base+=vec3(0.05,0.06,0.07)*w;
+  }
+  vec3 col;
+  if(m>5.5){ col=base; }
+  else {
+    float diff=max(dot(n,uLight),0.0); float hemi=0.5+0.5*n.y;
+    col=base*(0.40+0.22*hemi+0.52*diff);
+    col=mix(col,base,glassAmt*0.6);
+    if(m>4.5) col=base*(0.8+0.35*diff);
+  }
+  float fog=smoothstep(uFogR.x,uFogR.y,dist);
+  gl_FragColor=vec4(mix(col,uFog,fog),1.0);
+}`;
+
+let prog, loc = {};
+function initGL(){
+  const sh = (type, src) => {
+    const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  };
+  prog = gl.createProgram();
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS));
+  gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+  gl.useProgram(prog);
+  for (const a of ['aPos','aNor','aCol','aAux']) { loc[a] = gl.getAttribLocation(prog, a); gl.enableVertexAttribArray(loc[a]); }
+  for (const u of ['uVP','uEye','uFog','uFogR','uLight','uTime']) loc[u] = gl.getUniformLocation(prog, u);
+  gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL);
+  gl.disable(gl.CULL_FACE);
+  gl.clearColor(FOG[0], FOG[1], FOG[2], 1);
+}
+
+/* Growable vertex buffer: pos3 nor3 col3 aux3 */
+class Buf {
+  constructor(cap){ this.a = new Float32Array(cap || 1<<15); this.n = 0; }
+  grow(k){ if (this.n + k > this.a.length){ let c = this.a.length*2; while (c < this.n + k) c *= 2; const b = new Float32Array(c); b.set(this.a.subarray(0,this.n)); this.a = b; } }
+  v(x,y,z,nx,ny,nz,c,u,w,m){
+    this.grow(12); const a = this.a; const i = this.n;
+    a[i]=x;a[i+1]=y;a[i+2]=z;a[i+3]=nx;a[i+4]=ny;a[i+5]=nz;a[i+6]=c[0];a[i+7]=c[1];a[i+8]=c[2];a[i+9]=u;a[i+10]=w;a[i+11]=m;
+    this.n = i+12;
+  }
+  flat(ax,az,bx,bz,cx,cz,y,c,m){ this.v(ax,y,az,0,1,0,c,0,0,m); this.v(bx,y,bz,0,1,0,c,0,0,m); this.v(cx,y,cz,0,1,0,c,0,0,m); }
+  // triangle with computed normal; ref (optional) makes the normal face that way
+  tri(p,q,r,c,m,ref){
+    const ux=q[0]-p[0],uy=q[1]-p[1],uz=q[2]-p[2], vx=r[0]-p[0],vy=r[1]-p[1],vz=r[2]-p[2];
+    let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx; const l=Math.hypot(nx,ny,nz)||1; nx/=l; ny/=l; nz/=l;
+    if (ref && nx*ref[0]+ny*ref[1]+nz*ref[2] < 0){ nx=-nx; ny=-ny; nz=-nz; }
+    this.v(p[0],p[1],p[2],nx,ny,nz,c,0,0,m); this.v(q[0],q[1],q[2],nx,ny,nz,c,0,0,m); this.v(r[0],r[1],r[2],nx,ny,nz,c,0,0,m);
+  }
+  get count(){ return this.n/12; }
+}
+function upload(buf, old){
+  if (old && old.buf) gl.deleteBuffer(old.buf);
+  const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b);
+  gl.bufferData(gl.ARRAY_BUFFER, buf.a.subarray(0, buf.n), gl.STATIC_DRAW);
+  return { buf:b, count: buf.count };
+}
+function bindAttribs(){
+  gl.vertexAttribPointer(loc.aPos,3,gl.FLOAT,false,48,0);
+  gl.vertexAttribPointer(loc.aNor,3,gl.FLOAT,false,48,12);
+  gl.vertexAttribPointer(loc.aCol,3,gl.FLOAT,false,48,24);
+  gl.vertexAttribPointer(loc.aAux,3,gl.FLOAT,false,48,36);
+}
+function draw(mesh){
+  if (!mesh || !mesh.count) return;
+  gl.bindBuffer(gl.ARRAY_BUFFER, mesh.buf); bindAttribs();
+  gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
+}
+// Even-odd fill through the stencil buffer: handles concave shapes and holes (water, parks, squares).
+function drawFilled(mesh){
+  if (!mesh || !mesh.count) return;
+  gl.enable(gl.STENCIL_TEST);
+  gl.colorMask(false,false,false,false); gl.depthMask(false);
+  gl.stencilFunc(gl.ALWAYS,0,0xff); gl.stencilOp(gl.KEEP,gl.KEEP,gl.INVERT);
+  draw(mesh);
+  gl.colorMask(true,true,true,true); gl.depthMask(true);
+  gl.stencilFunc(gl.NOTEQUAL,0,0xff); gl.stencilOp(gl.ZERO,gl.ZERO,gl.ZERO);
+  draw(mesh);
+  gl.disable(gl.STENCIL_TEST);
+}
+let dynGL = null, gunGL = null;
+function drawDynamic(buf, slot){
+  if (!buf.n) return;
+  if (!slot.buf) slot.buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, slot.buf);
+  gl.bufferData(gl.ARRAY_BUFFER, buf.a.subarray(0, buf.n), gl.DYNAMIC_DRAW);
+  bindAttribs();
+  gl.drawArrays(gl.TRIANGLES, 0, buf.count);
+}
+
+/* =========================================================
+   Map data
+   ========================================================= */
+async function fetchJSON(url, opts, ms){
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms || 45000);
+  try {
+    const r = await fetch(url, Object.assign({ signal: ctl.signal }, opts || {}));
+    if (!r.ok){ const e = new Error('HTTP ' + r.status); e.status = r.status; throw e; }
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+async function geocode(q){
+  // OpenStreetMap's own search first, Photon (also built on OpenStreetMap) as a fallback
+  let firstErr = null;
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=en&q=' + encodeURIComponent(q);
+    const res = await fetchJSON(url, null, 15000);
+    if (res && res.length){
+      const r = res[0]; const parts = (r.display_name || '').split(',').map(s => s.trim());
+      return { lat: parseFloat(r.lat), lon: parseFloat(r.lon), name: r.name || parts[0] || q, region: parts.slice(1, 3).filter(Boolean).join(', ') };
+    }
+  } catch (e){ firstErr = e; }
+  try {
+    const res = await fetchJSON('https://photon.komoot.io/api/?limit=1&lang=en&q=' + encodeURIComponent(q), null, 15000);
+    const f = res && res.features && res.features[0];
+    if (f){
+      const p = f.properties || {}, c = f.geometry.coordinates;
+      return { lat: c[1], lon: c[0], name: p.name || p.city || q, region: [p.city !== p.name ? p.city : null, p.state || p.country].filter(Boolean).join(', ') };
+    }
+    return null;
+  } catch (e){ throw firstErr || e; }
+}
+async function overpass(lat, lon){
+  const A = `(around:${RADIUS},${lat.toFixed(6)},${lon.toFixed(6)})`;
+  const q = `[out:json][timeout:40];(
+way["building"]${A};relation["building"]${A};
+way["highway"]${A};
+way["natural"~"^(water|wood)$"]${A};relation["natural"="water"]${A};
+way["waterway"="riverbank"]${A};
+way["landuse"~"^(grass|meadow|village_green|recreation_ground|forest|reservoir|basin|cemetery)$"]${A};
+way["leisure"~"^(park|garden|playground|pitch|common)$"]${A};relation["leisure"="park"]${A};
+);out geom;`;
+  let lastErr;
+  for (const ep of OVERPASS){
+    try {
+      return await fetchJSON(ep, { method:'POST', body: 'data=' + encodeURIComponent(q),
+        headers: { 'Content-Type':'application/x-www-form-urlencoded' } }, 50000);
+    } catch (e){ lastErr = e; }
+  }
+  throw lastErr || new Error('map servers unavailable');
+}
+
+/* =========================================================
+   Building the world
+   ========================================================= */
+const PAL = {
+  brick:['#8E4A3A','#9C5341','#7B4034','#A8664A','#B98A62','#6E3A30','#94583F'],
+  plaster:['#D9D2C3','#CFC6B4','#E3DDD0','#BFB6A5','#C9C1AE'],
+  office:['#B9BDBF','#9EA7AE','#C9C4B8','#8A949C','#D2CCBF'],
+  church:['#A39683','#9A8C78','#B0A28C'],
+  shed:['#8E8A83','#77736D','#9A948B'],
+  industrial:['#8D949A','#7C868D','#A0A4A2']
+};
+const ROOF_TILE = ['#7B3A2C','#8A4331','#4C4F55','#5A4A44','#6E3326'];
+const ROOF_FLAT = ['#6B6A68','#77736E','#5F6468','#716B64'];
+const NAMED = { white:'#E6E3DC', red:'#9A4B3C', brown:'#7A5040', yellow:'#D6C37A', grey:'#9C9C98', gray:'#9C9C98', beige:'#D8CBAE', black:'#3C3C3C', orange:'#C8763F', blue:'#6F8CA8', green:'#6E8A67', pink:'#D8A7A0', tan:'#C9AE88' };
+const H0 = { house:7.5, detached:7.5, semidetached_house:7.5, terrace:8.5, bungalow:4.5, residential:10, apartments:15, dormitory:13,
+  commercial:11, retail:8, office:14, supermarket:7, hotel:16, church:16, cathedral:24, chapel:9, garage:3, garages:3,
+  shed:2.8, carport:2.6, roof:4, hut:3, industrial:9, warehouse:9, school:11, university:14, hospital:18, train_station:12 };
+
+function classify(b){
+  if (/^(house|detached|semidetached_house|terrace|residential|apartments|bungalow|dormitory|farm|cabin)$/.test(b)) return 'res';
+  if (/^(commercial|retail|office|supermarket|hotel|kiosk|shop|mall|bank)$/.test(b)) return 'com';
+  if (/^(church|cathedral|chapel|mosque|temple|synagogue|religious)$/.test(b)) return 'church';
+  if (/^(garage|garages|shed|carport|roof|hut|shelter|toilets|service|transformer_tower|greenhouse|container)$/.test(b)) return 'shed';
+  if (/^(industrial|warehouse|factory|manufacture|storage_tank|hangar)$/.test(b)) return 'ind';
+  if (/^(school|university|college|public|civic|government|hospital|train_station|transportation|townhall|museum|library|sports_hall|stadium|fire_station)$/.test(b)) return 'civic';
+  return 'yes';
+}
+function pick(list, id, salt){ return list[Math.floor(hash(id*31 + salt) * list.length) % list.length]; }
+function tagColor(v){ if (!v) return null; v = String(v).trim().toLowerCase(); if (/^#[0-9a-f]{6}$/.test(v)) return hex(v); if (NAMED[v]) return hex(NAMED[v]); return null; }
+function wallColor(cls, id, t){
+  const c = tagColor(t['building:colour']); if (c) return c;
+  let p;
+  switch (cls){
+    case 'res': p = hash(id) < 0.72 ? PAL.brick : PAL.plaster; break;
+    case 'com': p = PAL.office; break;
+    case 'church': p = PAL.church; break;
+    case 'shed': p = PAL.shed; break;
+    case 'ind': p = PAL.industrial; break;
+    case 'civic': p = hash(id) < 0.5 ? PAL.brick : PAL.office; break;
+    default: p = hash(id) < 0.6 ? PAL.brick : PAL.plaster;
+  }
+  return hex(pick(p, id, 1));
+}
+function heightOf(t, id){
+  let h = num(t.height);
+  if (!(h > 0)){ const lv = num(t['building:levels']); if (lv > 0) h = lv*3.1 + (num(t['roof:levels']) > 0 ? num(t['roof:levels'])*2.4 : 0.6); }
+  if (!(h > 0)) h = (H0[t.building] || 8) * (0.85 + 0.3*hash(id*7 + 3));
+  return clamp(h, 2.2, 320);
+}
+
+// geometry helpers on 2D rings of [x, z]
+function cleanRing(pts){
+  const out = [];
+  for (const p of pts){ const q = out[out.length-1]; if (!q || Math.abs(q[0]-p[0]) > 0.01 || Math.abs(q[1]-p[1]) > 0.01) out.push(p); }
+  if (out.length > 1){ const a = out[0], b = out[out.length-1]; if (Math.abs(a[0]-b[0]) < 0.01 && Math.abs(a[1]-b[1]) < 0.01) out.pop(); }
+  return out;
+}
+const isClosed = pts => pts.length > 3 && Math.abs(pts[0][0]-pts[pts.length-1][0]) < 0.01 && Math.abs(pts[0][1]-pts[pts.length-1][1]) < 0.01;
+// signed area in (east, north) = (x, -z); positive = counter-clockwise seen from above
+function areaEN(r){ let a = 0; for (let i=0;i<r.length;i++){ const p=r[i], q=r[(i+1)%r.length]; a += p[0]*(-q[1]) - q[0]*(-p[1]); } return a/2; }
+function stitch(parts){
+  const same = (a,b) => Math.abs(a[0]-b[0]) < 0.01 && Math.abs(a[1]-b[1]) < 0.01;
+  const pool = parts.filter(p => p.length > 1).map(p => p.slice()); const rings = [];
+  while (pool.length){
+    let ring = pool.shift(), guard = 0;
+    while (!same(ring[0], ring[ring.length-1]) && guard++ < 2000){
+      const end = ring[ring.length-1]; let idx = -1, rev = false;
+      for (let i=0;i<pool.length;i++){
+        if (same(pool[i][0], end)){ idx = i; break; }
+        if (same(pool[i][pool[i].length-1], end)){ idx = i; rev = true; break; }
+      }
+      if (idx < 0) break;
+      let seg = pool.splice(idx,1)[0]; if (rev) seg = seg.slice().reverse();
+      ring = ring.concat(seg.slice(1));
+    }
+    if (ring.length >= 4 && same(ring[0], ring[ring.length-1])) rings.push(ring.slice(0,-1));
+  }
+  return rings;
+}
+// ear clipping for simple polygons, input [[x, y]] counter-clockwise
+function earClip(p){
+  const n = p.length, tris = []; if (n < 3) return tris;
+  const V = []; for (let i=0;i<n;i++) V.push(i);
+  const cr = (a,b,c) => (p[b][0]-p[a][0])*(p[c][1]-p[a][1]) - (p[b][1]-p[a][1])*(p[c][0]-p[a][0]);
+  const inside = (q,a,b,c) => {
+    const px=p[q][0], py=p[q][1];
+    const d1=(p[b][0]-p[a][0])*(py-p[a][1])-(p[b][1]-p[a][1])*(px-p[a][0]);
+    const d2=(p[c][0]-p[b][0])*(py-p[b][1])-(p[c][1]-p[b][1])*(px-p[b][0]);
+    const d3=(p[a][0]-p[c][0])*(py-p[c][1])-(p[a][1]-p[c][1])*(px-p[c][0]);
+    return d1 >= 0 && d2 >= 0 && d3 >= 0;
+  };
+  if (n <= 700){
+    let guard = 0;
+    while (V.length > 3 && guard++ < 6*n){
+      let found = false;
+      for (let i=0;i<V.length;i++){
+        const a = V[(i+V.length-1)%V.length], b = V[i], c = V[(i+1)%V.length];
+        if (cr(a,b,c) <= 1e-9) continue;
+        let ok = true;
+        for (let j=0;j<V.length;j++){ const q = V[j]; if (q===a||q===b||q===c) continue; if (inside(q,a,b,c)){ ok = false; break; } }
+        if (ok){ tris.push(a,b,c); V.splice(i,1); found = true; break; }
+      }
+      if (!found){
+        let idx = -1;
+        for (let i=0;i<V.length;i++){ const a=V[(i+V.length-1)%V.length], b=V[i], c=V[(i+1)%V.length]; if (Math.abs(cr(a,b,c)) < 1e-7){ idx = i; break; } }
+        if (idx >= 0){ V.splice(idx,1); continue; }
+        break;
+      }
+    }
+  }
+  for (let i=1;i<V.length-1;i++) tris.push(V[0],V[i],V[i+1]);
+  return tris;
+}
+function simplifyRing(r){
+  const out = r.slice(); let changed = true;
+  while (changed && out.length > 3){
+    changed = false;
+    for (let i=0;i<out.length;i++){
+      const a = out[(i-1+out.length)%out.length], b = out[i], c = out[(i+1)%out.length];
+      const e1x=b[0]-a[0], e1z=b[1]-a[1], e2x=c[0]-b[0], e2z=c[1]-b[1];
+      const l1 = Math.hypot(e1x,e1z), l2 = Math.hypot(e2x,e2z);
+      if (l1 < 0.3 || l2 < 0.3 || Math.abs(e1x*e2z - e1z*e2x)/(l1*l2) < 0.12){ out.splice(i,1); changed = true; break; }
+    }
+  }
+  return out;
+}
+function asRect(r){
+  const s = simplifyRing(r); if (s.length !== 4) return null;
+  for (let i=0;i<4;i++){
+    const a = s[(i+3)%4], b = s[i], c = s[(i+1)%4];
+    const e1x=b[0]-a[0], e1z=b[1]-a[1], e2x=c[0]-b[0], e2z=c[1]-b[1];
+    if (Math.abs(e1x*e2x + e1z*e2z)/(Math.hypot(e1x,e1z)*Math.hypot(e2x,e2z)) > 0.2) return null;
+  }
+  return s;
+}
+function pointInRing(r, x, z){
+  let inside = false;
+  for (let i=0, j=r.length-1; i<r.length; j=i++){
+    const xi=r[i][0], zi=r[i][1], xj=r[j][0], zj=r[j][1];
+    if ((zi > z) !== (zj > z) && x < (xj-xi)*(z-zi)/(zj-zi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function distSeg(s, x, z){
+  const abx=s.bx-s.ax, abz=s.bz-s.az; const L = abx*abx + abz*abz || 1e-9;
+  const t = clamp(((x-s.ax)*abx + (z-s.az)*abz)/L, 0, 1);
+  return Math.hypot(x-(s.ax+abx*t), z-(s.az+abz*t));
+}
+
+class Grid {
+  constructor(cell){ this.c = cell; this.m = new Map(); this.stamp = 0; }
+  key(i,j){ return (i+4096)*8192 + (j+4096); }
+  add(o, minx, minz, maxx, maxz){
+    const c = this.c;
+    for (let i=Math.floor(minx/c); i<=Math.floor(maxx/c); i++) for (let j=Math.floor(minz/c); j<=Math.floor(maxz/c); j++){
+      const k = this.key(i,j); let a = this.m.get(k); if (!a){ a = []; this.m.set(k,a); } a.push(o);
+    }
+  }
+  query(x, z, r){
+    const c = this.c, out = [], s = ++this.stamp;
+    for (let i=Math.floor((x-r)/c); i<=Math.floor((x+r)/c); i++) for (let j=Math.floor((z-r)/c); j<=Math.floor((z+r)/c); j++){
+      const a = this.m.get(this.key(i,j)); if (!a) continue;
+      for (const o of a) if (o._s !== s){ o._s = s; out.push(o); }
+    }
+    return out;
+  }
+}
+
+const ROAD = {
+  motorway:[14,'car'], trunk:[12,'car'], primary:[10,'car'], secondary:[9,'car'], tertiary:[8,'car'],
+  motorway_link:[7,'car'], trunk_link:[7,'car'], primary_link:[7,'car'], secondary_link:[7,'car'], tertiary_link:[6,'car'],
+  residential:[6.5,'car'], unclassified:[6,'car'], road:[6,'car'], service:[4,'car'], busway:[6,'car'],
+  living_street:[5.5,'paved'], pedestrian:[5,'paved'],
+  footway:[2.2,'foot'], path:[2,'foot'], steps:[2,'foot'], bridleway:[2,'foot'], track:[3,'foot'],
+  cycleway:[2.4,'cycle']
+};
+const ROAD_COL = { car: hex('#3E4247'), paved: hex('#7E6C63'), foot: hex('#A7A196'), cycle: hex('#9A4B40') };
+const ROAD_Y = { car:0.045, paved:0.05, cycle:0.055, foot:0.06 };
+
+let world = null;
+
+function buildWorld(osm, place){
+  const lat0 = place.lat, lon0 = place.lon;
+  const mx = 111320*Math.cos(lat0*Math.PI/180), my = 110540;
+  const P = g => [(g.lon-lon0)*mx, -(g.lat-lat0)*my];
+  const LIMIT = RADIUS + 160;
+  const near = r => r.some(p => Math.abs(p[0]) < LIMIT && Math.abs(p[1]) < LIMIT);
+
+  const W = {
+    walls: [], buildings: [], roadPts: [], place,
+    wallGrid: new Grid(12), bGrid: new Grid(24), nameGrid: new Grid(24),
+    buildingCount: 0, roadMeters: 0
+  };
+  const B = new Buf(1<<20), R = new Buf(1<<18), Wt = new Buf(1<<14), Pk = new Buf(1<<14), Pl = new Buf(1<<14), G = new Buf(64);
+  const waterRings = [], parkRings = [], plazaRings = [];
+
+  // ground
+  const E = RADIUS + 320, gc = hex('#8F9382');
+  G.flat(-E,-E, E,-E, E,E, 0, gc, 0); G.flat(-E,-E, E,E, -E,E, 0, gc, 0);
+
+  const isWater = t => t.natural === 'water' || t.waterway === 'riverbank' || t.landuse === 'reservoir' || t.landuse === 'basin';
+  const isPark = t => /^(park|garden|playground|pitch|common)$/.test(t.leisure || '') || /^(grass|meadow|village_green|recreation_ground|forest|cemetery)$/.test(t.landuse || '') || t.natural === 'wood';
+
+  function addBuilding(raw, t, id){
+    if (t.building === 'no' || t.location === 'underground' || num(t.layer) < 0) return;
+    let ring = cleanRing(raw); if (ring.length < 3 || !near(ring)) return;
+    let A = areaEN(ring); if (A < 0){ ring = ring.slice().reverse(); A = -A; }
+    if (A < 3) return;
+    const cls = classify(t.building);
+    const h = heightOf(t, id);
+    const wc = wallColor(cls, id, t);
+    const mode = cls === 'com' ? 2 : (cls === 'res' || cls === 'yes' || cls === 'civic') ? 1 : 0;
+    const bayW = cls === 'com' ? 3.6 : cls === 'civic' ? 3.4 : 3.0;
+
+    // roof shape: simple gable on small rectangular homes
+    const shape = (t['roof:shape'] || '').toLowerCase();
+    const rect = (shape !== 'flat' && (cls === 'res' || cls === 'yes') && A < 260 && h < 13) ? asRect(ring) : null;
+    const wantsGable = rect && (shape === 'gabled' || shape === 'hipped' || /^(house|detached|semidetached_house|terrace)$/.test(t.building) || hash(id*3+9) < 0.7);
+    let eave = h, rh = 0;
+    if (wantsGable){
+      const s = rect, l1 = Math.hypot(s[1][0]-s[0][0], s[1][1]-s[0][1]), l2 = Math.hypot(s[2][0]-s[1][0], s[2][1]-s[1][1]);
+      rh = Math.min(Math.min(l1,l2)*0.5, 5); eave = Math.max(2.8, h - rh*0.6);
+    }
+    const floors = Math.max(1, Math.round(eave/3.1)), floorH = eave/floors;
+
+    let minx=1e9,minz=1e9,maxx=-1e9,maxz=-1e9;
+    for (let i=0;i<ring.length;i++){
+      const a = ring[i], b = ring[(i+1)%ring.length];
+      minx = Math.min(minx,a[0]); maxx = Math.max(maxx,a[0]); minz = Math.min(minz,a[1]); maxz = Math.max(maxz,a[1]);
+      const dx=b[0]-a[0], dz=b[1]-a[1], len=Math.hypot(dx,dz); if (len < 0.05) continue;
+      const nx=-dz/len, nz=dx/len;
+      let m = mode, U = 0, V = 0;
+      if (m > 0 && len >= 1.6){ U = Math.max(1, Math.round(len/bayW)); V = eave/floorH; } else m = 0;
+      B.v(a[0],0,a[1],nx,0,nz,wc,0,0,m); B.v(b[0],0,b[1],nx,0,nz,wc,U,0,m); B.v(b[0],eave,b[1],nx,0,nz,wc,U,V,m);
+      B.v(a[0],0,a[1],nx,0,nz,wc,0,0,m); B.v(b[0],eave,b[1],nx,0,nz,wc,U,V,m); B.v(a[0],eave,a[1],nx,0,nz,wc,0,V,m);
+      const seg = { ax:a[0], az:a[1], bx:b[0], bz:b[1], h: eave + rh*0.5 };
+      W.walls.push(seg);
+      W.wallGrid.add(seg, Math.min(a[0],b[0]), Math.min(a[1],b[1]), Math.max(a[0],b[0]), Math.max(a[1],b[1]));
+    }
+
+    if (wantsGable){
+      const s = rect; const k = Math.hypot(s[1][0]-s[0][0], s[1][1]-s[0][1]) >= Math.hypot(s[2][0]-s[1][0], s[2][1]-s[1][1]) ? 0 : 1;
+      const p = [s[k], s[(k+1)%4], s[(k+2)%4], s[(k+3)%4]];
+      const r0 = [(p[3][0]+p[0][0])/2, (p[3][1]+p[0][1])/2], r1 = [(p[1][0]+p[2][0])/2, (p[1][1]+p[2][1])/2];
+      const top = eave + rh, rc = hex(pick(ROOF_TILE, id, 5)), up = [0,1,0];
+      const Q = (q,y) => [q[0], y, q[1]];
+      B.tri(Q(p[0],eave), Q(p[1],eave), Q(r1,top), rc, 0, up); B.tri(Q(p[0],eave), Q(r1,top), Q(r0,top), rc, 0, up);
+      B.tri(Q(p[2],eave), Q(p[3],eave), Q(r0,top), rc, 0, up); B.tri(Q(p[2],eave), Q(r0,top), Q(r1,top), rc, 0, up);
+      const cx = (p[0][0]+p[2][0])/2, cz = (p[0][1]+p[2][1])/2;
+      B.tri(Q(p[1],eave), Q(p[2],eave), Q(r1,top), wc, 0, [r1[0]-cx, 0, r1[1]-cz]);
+      B.tri(Q(p[3],eave), Q(p[0],eave), Q(r0,top), wc, 0, [r0[0]-cx, 0, r0[1]-cz]);
+    } else {
+      const rc = hex(pick(cls === 'res' && h < 11 ? ROOF_TILE : ROOF_FLAT, id, 5));
+      const en = ring.map(q => [q[0], -q[1]]);
+      const idx = earClip(en);
+      for (let i=0;i<idx.length;i+=3){ const a = ring[idx[i]], b = ring[idx[i+1]], c = ring[idx[i+2]]; B.flat(a[0],a[1], b[0],b[1], c[0],c[1], eave, rc, 0); }
+    }
+    const bld = { ring, minx, minz, maxx, maxz, h: eave };
+    W.buildings.push(bld); W.bGrid.add(bld, minx, minz, maxx, maxz);
+    W.buildingCount++;
+  }
+
+  function addRoad(raw, t){
+    const hw = t.highway; if (!ROAD[hw] || t.tunnel === 'yes' || t.indoor === 'yes') return;
+    const pts = raw; // keep closing point so roundabouts stay closed
+    if (t.area === 'yes' && isClosed(raw)){ plazaRings.push(cleanRing(raw)); return; }
+    let [w, kind] = ROAD[hw];
+    const tw = num(t.width); if (tw > 1 && tw < 25) w = tw;
+    let col = ROAD_COL[kind];
+    if (kind === 'car' && /^(paving_stones|sett|bricks|cobblestone|unhewn_cobblestone)$/.test(t.surface || '')) col = ROAD_COL.paved;
+    const y = ROAD_Y[kind], hw2 = w/2;
+    const walkable = kind !== 'car' || !/^(motorway|trunk)/.test(hw);
+    for (let i=0;i<pts.length-1;i++){
+      const a = pts[i], b = pts[i+1];
+      if (Math.abs(a[0]) > LIMIT && Math.abs(b[0]) > LIMIT || Math.abs(a[1]) > LIMIT && Math.abs(b[1]) > LIMIT) continue;
+      const dx=b[0]-a[0], dz=b[1]-a[1], l=Math.hypot(dx,dz); if (l < 0.01) continue;
+      const ox=-dz/l*hw2, oz=dx/l*hw2;
+      R.flat(a[0]+ox,a[1]+oz, b[0]+ox,b[1]+oz, b[0]-ox,b[1]-oz, y, col, 0);
+      R.flat(a[0]+ox,a[1]+oz, b[0]-ox,b[1]-oz, a[0]-ox,a[1]-oz, y, col, 0);
+      if (Math.hypot((a[0]+b[0])/2,(a[1]+b[1])/2) < RADIUS) W.roadMeters += l;
+      if (t.name){ const seg = { ax:a[0], az:a[1], bx:b[0], bz:b[1], name:t.name }; W.nameGrid.add(seg, Math.min(a[0],b[0])-2, Math.min(a[1],b[1])-2, Math.max(a[0],b[0])+2, Math.max(a[1],b[1])+2); }
+      if (walkable){
+        const steps = Math.max(1, Math.floor(l/7));
+        for (let k=0;k<steps;k++){
+          const f = k/steps, x = a[0]+dx*f, z = a[1]+dz*f;
+          if (Math.hypot(x,z) < RADIUS - 15) W.roadPts.push({ x, z, dir: Math.atan2(dx, -dz), wide: w >= 4 });
+        }
+      }
+    }
+    // round joins
+    for (const p of pts){
+      if (Math.abs(p[0]) > LIMIT || Math.abs(p[1]) > LIMIT) continue;
+      for (let k=0;k<8;k++){
+        const a0 = k/8*Math.PI*2, a1 = (k+1)/8*Math.PI*2;
+        R.flat(p[0],p[1], p[0]+Math.cos(a0)*hw2,p[1]+Math.sin(a0)*hw2, p[0]+Math.cos(a1)*hw2,p[1]+Math.sin(a1)*hw2, y, col, 0);
+      }
+    }
+  }
+
+  for (const el of (osm.elements || [])){
+    const t = el.tags || {};
+    if (el.type === 'way'){
+      if (!el.geometry) continue;
+      const pts = el.geometry.filter(Boolean).map(P);
+      if (pts.length < 2) continue;
+      if (t.building) addBuilding(pts, t, el.id);
+      else if (t.highway) addRoad(pts, t);
+      else if (isClosed(pts) && isWater(t)) waterRings.push(cleanRing(pts));
+      else if (isClosed(pts) && isPark(t)) parkRings.push(cleanRing(pts));
+    } else if (el.type === 'relation'){
+      const outers = [], inners = [];
+      for (const m of el.members || []){
+        if (m.type !== 'way' || !m.geometry) continue;
+        const pts = m.geometry.filter(Boolean).map(P);
+        (m.role === 'inner' ? inners : outers).push(pts);
+      }
+      if (t.building){ for (const r of stitch(outers)) addBuilding(r, t, el.id); }
+      else if (isWater(t)) waterRings.push(...stitch(outers), ...stitch(inners));
+      else if (isPark(t)) parkRings.push(...stitch(outers), ...stitch(inners));
+    }
+  }
+
+  const fans = (buf, rings, y, c, m) => {
+    for (const r of rings){ if (r.length < 3) continue; for (let i=1;i<r.length-1;i++) buf.flat(r[0][0],r[0][1], r[i][0],r[i][1], r[i+1][0],r[i+1][1], y, c, m); }
+  };
+  fans(Wt, waterRings, 0.02, hex('#3F6E8A'), 4);
+  fans(Pk, parkRings, 0.025, hex('#6E8F55'), 0);
+  fans(Pl, plazaRings, 0.03, hex('#9A8F84'), 0);
+
+  W.gl ={ ground: upload(G), water: upload(Wt), parks: upload(Pk), plazas: upload(Pl), roads: upload(R), blds: upload(B) };
+  return W;
+}
+
+function freeWorld(W){ for (const k in W.gl) if (W.gl[k] && W.gl[k].buf) gl.deleteBuffer(W.gl[k].buf); }
+function insideBuilding(W, x, z){
+  for (const b of W.bGrid.query(x, z, 0)) if (x >= b.minx && x <= b.maxx && z >= b.minz && z <= b.maxz && pointInRing(b.ring, x, z)) return true;
+  return false;
+}
+function clearOf(W, x, z, r){
+  for (const s of W.wallGrid.query(x, z, r)) if (distSeg(s, x, z) < r) return false;
+  return true;
+}
+function chooseSpawn(W){
+  const pts = W.roadPts.slice().sort((a,b) => (Math.hypot(a.x,a.z) + (a.wide?0:25)) - (Math.hypot(b.x,b.z) + (b.wide?0:25)));
+  for (const p of pts) if (clearOf(W, p.x, p.z, 1.2) && !insideBuilding(W, p.x, p.z)) return p;
+  // no streets at all: find any open spot near the middle
+  for (let r = 0; r < RADIUS; r += 6) for (let a = 0; a < 12; a++){
+    const x = Math.cos(a/12*Math.PI*2)*r, z = Math.sin(a/12*Math.PI*2)*r;
+    if (clearOf(W, x, z, 1.2) && !insideBuilding(W, x, z)) return { x, z, dir: 0 };
+  }
+  return { x:0, z:0, dir:0 };
+}
+function placeTargets(W, sp){
+  const cand = W.roadPts.filter(p => { const d = Math.hypot(p.x-sp.x, p.z-sp.z); return d > 22 && d < RADIUS - 30; });
+  for (let i=cand.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); const t = cand[i]; cand[i] = cand[j]; cand[j] = t; }
+  const out = [];
+  for (const spacing of [34, 20, 10, 0]){
+    for (const p of cand){
+      if (out.length >= TARGET_COUNT) break;
+      if (out.some(o => Math.hypot(o.x-p.x, o.z-p.z) < spacing)) continue;
+      if (!clearOf(W, p.x, p.z, 2) || insideBuilding(W, p.x, p.z)) continue;
+      out.push({ x:p.x, z:p.z, y: 2.6 + Math.random()*2.6, phase: Math.random()*6.28, alive: true });
+    }
+    if (out.length >= TARGET_COUNT) break;
+  }
+  while (out.length < TARGET_COUNT){ // tiny place: float targets around the spawn
+    const a = Math.random()*6.28, d = 12 + Math.random()*30;
+    out.push({ x: sp.x + Math.cos(a)*d, z: sp.z + Math.sin(a)*d, y: 8 + Math.random()*6, phase: a, alive: true });
+  }
+  return out;
+}
+
+/* =========================================================
+   Game state
+   ========================================================= */
+let state = 'start';
+const P = { x:0, z:0, yaw:0, pitch:0, bob:0 };
+let targets = [], particles = [];
+let roundTime = 0, shots = 0, hits = 0, cool = 0, recoil = 0, flash = 0, holdFire = false, time = 0;
+let streetTimer = 0, lastStreet = '';
+const keys = new Set();
+let joy = null, look = null, mouseDown = null, wasLocked = false;
+let isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+document.body.classList.toggle('touch', isTouch);
+
+function eyePos(){ return [P.x, EYE + Math.sin(P.bob)*0.035, P.z]; }
+function viewDir(){ const cp = Math.cos(P.pitch); return [Math.sin(P.yaw)*cp, Math.sin(P.pitch), -Math.cos(P.yaw)*cp]; }
+
+function newRound(){
+  const sp = world.spawn;
+  P.x = sp.x; P.z = sp.z; P.yaw = sp.dir; P.pitch = 0;
+  targets = placeTargets(world, sp); particles = [];
+  roundTime = 0; shots = 0; hits = 0;
+  updateLeft();
+}
+
+function update(dt){
+  roundTime += dt; cool -= dt;
+  // input → move vector
+  let f = 0, s = 0, run = false;
+  if (keys.has('KeyW') || keys.has('ArrowUp')) f += 1;
+  if (keys.has('KeyS') || keys.has('ArrowDown')) f -= 1;
+  if (keys.has('KeyD') || keys.has('ArrowRight')) s += 1;
+  if (keys.has('KeyA') || keys.has('ArrowLeft')) s -= 1;
+  if (keys.has('ShiftLeft') || keys.has('ShiftRight')) run = true;
+  if (joy){ const m = Math.hypot(joy.dx, joy.dy)/50; f = -joy.dy/50; s = joy.dx/50; if (m > 0.92) run = true; }
+  const mag = Math.hypot(f, s); if (mag > 1){ f /= mag; s /= mag; }
+  const speed = run ? RUN : WALK;
+  const fx = Math.sin(P.yaw), fz = -Math.cos(P.yaw), rx = Math.cos(P.yaw), rz = Math.sin(P.yaw);
+  let mx = (fx*f + rx*s)*speed*dt, mz = (fz*f + rz*s)*speed*dt;
+  const dist = Math.hypot(mx, mz);
+  if (dist > 0){
+    const n = Math.ceil(dist/0.15);
+    for (let i=0;i<n;i++){ P.x += mx/n; P.z += mz/n; collide(); }
+    const r = Math.hypot(P.x, P.z); if (r > RADIUS + 60){ P.x *= (RADIUS+60)/r; P.z *= (RADIUS+60)/r; }
+    P.bob += dist*1.9;
+  }
+  if (holdFire && cool <= 0) shoot();
+  recoil = Math.max(0, recoil - dt*7); flash = Math.max(0, flash - dt);
+}
+function collide(){
+  for (let it=0; it<3; it++){
+    let moved = false;
+    for (const s of world.wallGrid.query(P.x, P.z, 1)){
+      const abx=s.bx-s.ax, abz=s.bz-s.az, L = abx*abx+abz*abz; if (L < 1e-8) continue;
+      const t = clamp(((P.x-s.ax)*abx + (P.z-s.az)*abz)/L, 0, 1);
+      const cx = s.ax+abx*t, cz = s.az+abz*t; let dx = P.x-cx, dz = P.z-cz; const d = Math.hypot(dx, dz);
+      if (d < PLAYER_R){
+        if (d < 1e-6){ const l = Math.sqrt(L); dx = -abz/l; dz = abx/l; } else { dx /= d; dz /= d; }
+        P.x = cx + dx*PLAYER_R; P.z = cz + dz*PLAYER_R; moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+}
+
+function shoot(){
+  if (state !== 'playing' || cool > 0) return;
+  cool = 0.17; recoil = 1; flash = 0.06; shots++; sfxShot();
+  const o = eyePos(), d = viewDir();
+  let tBlock = Infinity;
+  if (d[1] < -1e-4) tBlock = -o[1]/d[1];
+  for (const s of world.walls){
+    const ex = s.bx-s.ax, ez = s.bz-s.az, den = d[0]*ez - d[2]*ex;
+    if (Math.abs(den) < 1e-9) continue;
+    const wx = s.ax-o[0], wz = s.az-o[2];
+    const t = (wx*ez - wz*ex)/den; if (t <= 0 || t >= tBlock) continue;
+    const u = (wx*d[2] - wz*d[0])/den; if (u < 0 || u > 1) continue;
+    const y = o[1] + d[1]*t; if (y >= 0 && y <= s.h) tBlock = t;
+  }
+  const hitR = isTouch ? 1.35 : 1.05;
+  let best = -1, bt = tBlock;
+  targets.forEach((tg, i) => {
+    if (!tg.alive) return;
+    const c = [tg.x, tg.y + Math.sin(time*1.6 + tg.phase)*0.3, tg.z];
+    const ox = o[0]-c[0], oy = o[1]-c[1], oz = o[2]-c[2];
+    const b = ox*d[0] + oy*d[1] + oz*d[2], cc = ox*ox + oy*oy + oz*oz - hitR*hitR, disc = b*b - cc;
+    if (disc < 0) return;
+    const t = -b - Math.sqrt(disc); if (t > 0 && t < bt){ bt = t; best = i; }
+  });
+  if (best >= 0){
+    const tg = targets[best]; tg.alive = false; hits++;
+    burst(tg.x, tg.y + Math.sin(time*1.6 + tg.phase)*0.3, tg.z, 28, [hex('#F2711C'), hex('#FFD2A8'), hex('#FBFBF8')], 7);
+    hitMarker(); sfxHit(); updateLeft();
+    const left = targets.filter(t => t.alive).length;
+    if (left === 0) setTimeout(finish, 700);
+    else toast(left === 1 ? 'One target left' : left + ' targets left');
+  } else if (tBlock < 260){
+    burst(o[0]+d[0]*tBlock, o[1]+d[1]*tBlock, o[2]+d[2]*tBlock, 7, [hex('#CFC8BC'), hex('#8F887E')], 2.5);
+  }
+}
+function burst(x, y, z, n, cols, speed){
+  for (let i=0;i<n;i++){
+    const a = Math.random()*6.283, e = Math.random()*2 - 0.6, sp = speed*(0.4 + Math.random()*0.8);
+    particles.push({ x, y, z, vx: Math.cos(a)*sp*Math.cos(e), vy: Math.sin(e)*sp + speed*0.3, vz: Math.sin(a)*sp*Math.cos(e),
+      life: 0, max: 0.6 + Math.random()*0.6, c: cols[i % cols.length], s: 0.08 + Math.random()*0.14, spin: Math.random()*6 });
+  }
+}
+
+/* =========================================================
+   Rendering
+   ========================================================= */
+const dyn = new Buf(1<<14), gun = new Buf(1<<11);
+const dynSlot = {}, gunSlot = {};
+const C_TARGET = hex('#F2711C'), C_TARGET_TOP = hex('#FF9A52'), C_RING = hex('#FBFBF8'), C_BEAM = hex('#F7B98A');
+
+function pushTarget(tg){
+  const cy = tg.y + Math.sin(time*1.6 + tg.phase)*0.3, r = 0.72, rot = time*1.4 + tg.phase;
+  const top = [tg.x, cy + r*1.15, tg.z], bot = [tg.x, cy - r*1.15, tg.z];
+  const eq = []; for (let k=0;k<4;k++){ const a = rot + k*Math.PI/2; eq.push([tg.x + Math.cos(a)*r, cy, tg.z + Math.sin(a)*r]); }
+  for (let k=0;k<4;k++){
+    const a = eq[k], b = eq[(k+1)%4];
+    const out = [(a[0]+b[0])/2 - tg.x, 0, (a[2]+b[2])/2 - tg.z];
+    dyn.tri(a, b, top, C_TARGET_TOP, 5, [out[0], 1, out[2]]);
+    dyn.tri(a, b, bot, C_TARGET, 5, [out[0], -1, out[2]]);
+  }
+  // spinning ring
+  const R1 = 1.05, R2 = 1.25, seg = 10, ry = cy;
+  for (let k=0;k<seg;k++){
+    const a0 = -rot*0.7 + k/seg*Math.PI*2, a1 = -rot*0.7 + (k+0.6)/seg*Math.PI*2;
+    const p0=[tg.x+Math.cos(a0)*R1,ry,tg.z+Math.sin(a0)*R1], p1=[tg.x+Math.cos(a1)*R1,ry,tg.z+Math.sin(a1)*R1];
+    const p2=[tg.x+Math.cos(a1)*R2,ry,tg.z+Math.sin(a1)*R2], p3=[tg.x+Math.cos(a0)*R2,ry,tg.z+Math.sin(a0)*R2];
+    dyn.tri(p0,p1,p2,C_RING,6,[0,1,0]); dyn.tri(p0,p2,p3,C_RING,6,[0,1,0]);
+  }
+  // guide beam to the street
+  const w = 0.05, y1 = cy - r*1.15;
+  dyn.tri([tg.x-w,0,tg.z],[tg.x+w,0,tg.z],[tg.x+w,y1,tg.z],C_BEAM,6);
+  dyn.tri([tg.x-w,0,tg.z],[tg.x+w,y1,tg.z],[tg.x-w,y1,tg.z],C_BEAM,6);
+  dyn.tri([tg.x,0,tg.z-w],[tg.x,0,tg.z+w],[tg.x,y1,tg.z+w],C_BEAM,6);
+  dyn.tri([tg.x,0,tg.z-w],[tg.x,y1,tg.z+w],[tg.x,y1,tg.z-w],C_BEAM,6);
+}
+function pushParticles(dt){
+  for (let i=particles.length-1;i>=0;i--){
+    const p = particles[i]; p.life += dt;
+    if (p.life > p.max){ particles.splice(i,1); continue; }
+    p.vy -= 12*dt; p.x += p.vx*dt; p.y += p.vy*dt; p.z += p.vz*dt;
+    if (p.y < 0.05){ p.y = 0.05; p.vy *= -0.35; p.vx *= 0.7; p.vz *= 0.7; }
+    const s = p.s*(1 - p.life/p.max*0.6), a = p.spin + p.life*8;
+    const v0=[p.x+Math.cos(a)*s,p.y,p.z+Math.sin(a)*s], v1=[p.x+Math.cos(a+2.1)*s,p.y,p.z+Math.sin(a+2.1)*s], v2=[p.x+Math.cos(a+4.2)*s,p.y,p.z+Math.sin(a+4.2)*s], v3=[p.x,p.y+s*1.4,p.z];
+    dyn.tri(v0,v1,v3,p.c,6); dyn.tri(v1,v2,v3,p.c,6); dyn.tri(v2,v0,v3,p.c,6); dyn.tri(v0,v2,v1,p.c,6);
+  }
+}
+function box(buf, cx, cy, cz, sx, sy, sz, c, m){
+  const x0=cx-sx/2,x1=cx+sx/2,y0=cy-sy/2,y1=cy+sy/2,z0=cz-sz/2,z1=cz+sz/2;
+  const F = (a,b,cc,d,n) => { buf.tri(a,b,cc,c,m||0,n); buf.tri(a,cc,d,c,m||0,n); };
+  F([x0,y1,z0],[x1,y1,z0],[x1,y1,z1],[x0,y1,z1],[0,1,0]);
+  F([x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1],[0,-1,0]);
+  F([x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1],[0,0,1]);
+  F([x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0],[0,0,-1]);
+  F([x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[x1,y0,z1],[1,0,0]);
+  F([x0,y0,z0],[x0,y1,z0],[x0,y1,z1],[x0,y0,z1],[-1,0,0]);
+}
+function buildGun(aspect){
+  gun.n = 0;
+  // positions are pushed further from the eye (k) so the gun stays small on narrow screens
+  const k = aspect < 1 ? 1.9 : 1.45;
+  const bx = ((aspect < 1 ? 0.15 : 0.24) + Math.sin(P.bob*0.5)*0.006)*k;
+  const by = (-0.24 + Math.abs(Math.cos(P.bob*0.5))*0.006 + recoil*0.012)*k;
+  const bz = recoil*0.06;
+  const oz = -0.62*k + bz; // gun origin; parts keep their offsets from it
+  box(gun, bx, by, oz, 0.09, 0.11, 0.42, hex('#2B3038'));
+  box(gun, bx, by+0.035, oz-0.28, 0.05, 0.05, 0.22, hex('#1C2026'));
+  box(gun, bx, by+0.064, oz+0.02, 0.094, 0.018, 0.32, hex('#F2711C'));
+  box(gun, bx, by-0.1, oz+0.12, 0.07, 0.15, 0.08, hex('#23272E'));
+  if (flash > 0){
+    const z = oz - 0.41, y = by+0.035, s = 0.07, c = hex('#FFE3A3');
+    gun.tri([bx-s,y,z],[bx+s,y,z],[bx,y+s,z],c,6); gun.tri([bx-s,y,z],[bx+s,y,z],[bx,y-s,z],c,6);
+    gun.tri([bx,y-s,z],[bx,y+s,z],[bx-s*0.7,y,z],c,6); gun.tri([bx,y-s,z],[bx,y+s,z],[bx+s*0.7,y,z],c,6);
+  }
+}
+
+function render(dt){
+  const w = canvas.width, h = canvas.height;
+  gl.viewport(0, 0, w, h);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+  if (!world) return;
+  const aspect = w/h, fov = (aspect < 1 ? 80 : 66)*Math.PI/180;
+  const e = eyePos(), d = viewDir();
+  const vp = mul(perspective(fov, aspect, 0.3, 900), lookAt(e, [e[0]+d[0], e[1]+d[1], e[2]+d[2]], [0,1,0]));
+  gl.uniformMatrix4fv(loc.uVP, false, vp);
+  gl.uniform3fv(loc.uEye, e);
+  gl.uniform3fv(loc.uFog, FOG);
+  gl.uniform2f(loc.uFogR, 70, 360);
+  gl.uniform3f(loc.uLight, 0.42, 0.78, 0.46);
+  gl.uniform1f(loc.uTime, time);
+
+  draw(world.gl.ground);
+  drawFilled(world.gl.water);
+  drawFilled(world.gl.parks);
+  drawFilled(world.gl.plazas);
+  draw(world.gl.roads);
+  draw(world.gl.blds);
+
+  dyn.n = 0;
+  for (const tg of targets) if (tg.alive) pushTarget(tg);
+  pushParticles(dt);
+  drawDynamic(dyn, dynSlot);
+
+  if (state === 'playing'){
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+    buildGun(aspect);
+    gl.uniformMatrix4fv(loc.uVP, false, perspective(fov, aspect, 0.03, 5));
+    gl.uniform3f(loc.uEye, 0, 0, 0);
+    gl.uniform3f(loc.uLight, 0.3, 0.75, 0.6);
+    drawDynamic(gun, gunSlot);
+  }
+}
+
+/* =========================================================
+   HUD
+   ========================================================= */
+const radar = $('#radar'), rctx = radar.getContext('2d');
+function updateLeft(){ $('#hudLeft').textContent = targets.filter(t => t.alive).length; }
+let toastT = 0;
+function toast(msg){ const el = $('#toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 1300); }
+let hitT = 0;
+function hitMarker(){ const el = $('#cross'); el.classList.add('hit'); clearTimeout(hitT); hitT = setTimeout(() => el.classList.remove('hit'), 180); }
+function drawRadar(){
+  const W = radar.width, c = W/2, R = c - 6, scale = R/160;
+  rctx.clearRect(0,0,W,W);
+  rctx.fillStyle = 'rgba(19,43,99,0.66)'; rctx.beginPath(); rctx.arc(c,c,R+4,0,Math.PI*2); rctx.fill();
+  rctx.strokeStyle = 'rgba(251,251,248,0.28)'; rctx.lineWidth = 2;
+  rctx.beginPath(); rctx.arc(c,c,R*0.5,0,Math.PI*2); rctx.stroke();
+  rctx.beginPath(); rctx.arc(c,c,R,0,Math.PI*2); rctx.stroke();
+  const fx = Math.sin(P.yaw), fz = -Math.cos(P.yaw), rx = Math.cos(P.yaw), rz = Math.sin(P.yaw);
+  // north marker
+  const nx = -rz, ny = -fz; // north is world (0,-1): right component -rz, forward component -fz
+  const nl = Math.hypot(nx, ny) || 1;
+  rctx.fillStyle = '#FBFBF8'; rctx.font = '800 20px Overpass, system-ui, sans-serif'; rctx.textAlign = 'center'; rctx.textBaseline = 'middle';
+  rctx.fillText('N', c + nx/nl*(R-12), c - ny/nl*(R-12));
+  for (const tg of targets){
+    if (!tg.alive) continue;
+    const dx = tg.x - P.x, dz = tg.z - P.z;
+    let sx = dx*rx + dz*rz, sy = dx*fx + dz*fz;
+    let px = sx*scale, py = sy*scale; const l = Math.hypot(px, py), edge = l > R - 8;
+    if (edge){ px *= (R-8)/l; py *= (R-8)/l; }
+    rctx.beginPath(); rctx.arc(c+px, c-py, edge ? 5 : 7, 0, Math.PI*2);
+    rctx.fillStyle = edge ? 'rgba(242,113,28,0.75)' : '#F2711C'; rctx.fill();
+    rctx.lineWidth = 2; rctx.strokeStyle = '#FBFBF8'; rctx.stroke();
+  }
+  rctx.fillStyle = '#FBFBF8'; rctx.beginPath(); rctx.moveTo(c, c-11); rctx.lineTo(c+8, c+8); rctx.lineTo(c, c+3); rctx.lineTo(c-8, c+8); rctx.closePath(); rctx.fill();
+}
+function updateHUD(dt){
+  $('#hudTime').textContent = fmtClock(roundTime);
+  drawRadar();
+  streetTimer -= dt;
+  if (streetTimer <= 0){
+    streetTimer = 0.3;
+    let best = null, bd = 28;
+    for (const s of world.nameGrid.query(P.x, P.z, 28)){ const d = distSeg(s, P.x, P.z); if (d < bd){ bd = d; best = s.name; } }
+    const label = best || lastStreet || world.place.name;
+    if (best) lastStreet = best;
+    const el = $('#hudStreet'); if (el.textContent !== label) el.textContent = label;
+  }
+}
+
+/* =========================================================
+   Sound
+   ========================================================= */
+let actx = null, muted = store.get('htr-muted') === '1', noiseBuf = null;
+function initAudio(){
+  try {
+    if (!actx){ actx = new (window.AudioContext || window.webkitAudioContext)();
+      const len = Math.floor(actx.sampleRate*0.14); noiseBuf = actx.createBuffer(1, len, actx.sampleRate);
+      const d = noiseBuf.getChannelData(0); for (let i=0;i<len;i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/len, 3);
+    }
+    if (actx.state === 'suspended') actx.resume();
+  } catch (e){ actx = null; }
+}
+function sfxShot(){
+  if (!actx || muted) return;
+  const s = actx.createBufferSource(); s.buffer = noiseBuf;
+  const f = actx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1700;
+  const g = actx.createGain(); g.gain.value = 0.32;
+  s.connect(f); f.connect(g); g.connect(actx.destination); s.start();
+}
+function sfxHit(){
+  if (!actx || muted) return;
+  const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+  o.type = 'triangle'; o.frequency.setValueAtTime(760, t); o.frequency.exponentialRampToValueAtTime(1500, t+0.09);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t+0.01); g.gain.exponentialRampToValueAtTime(0.0001, t+0.22);
+  o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t+0.25);
+}
+function syncSoundLabel(){ $('#btnSound').textContent = 'Sound: ' + (muted ? 'off' : 'on'); }
+
+/* =========================================================
+   Screens & flow
+   ========================================================= */
+function show(name){
+  for (const k in screens) screens[k].hidden = k !== name;
+  overlay.hidden = !name;
+  overlay.className = world ? 'scrim' : 'map';
+  $('#hud').hidden = !(state === 'playing');
+}
+function setLog(lines){
+  const ul = $('#log'); ul.hidden = !lines.length; ul.innerHTML = '';
+  for (const l of lines){ const li = document.createElement('li'); li.textContent = l.text; if (l.done) li.className = 'done'; ul.appendChild(li); }
+}
+function showError(msg){ const e = $('#err'); e.textContent = msg; e.hidden = !msg; }
+
+let loading = false;
+async function loadPlace(q){
+  q = (q || '').trim(); if (!q || loading) return;
+  loading = true; showError(''); $('#btnLoad').disabled = true;
+  state = 'loading'; show('start');
+  const lines = [{ text: 'Finding ' + q + '…' }]; setLog(lines);
+  try {
+    let place;
+    try { place = await geocode(q); }
+    catch (e){ throw friendly(e, 'lookup'); }
+    if (!place) throw new Error('No place called “' + q + '” was found. Try adding the country, like “' + q + ', Netherlands”.');
+    lines[0] = { text: 'Found ' + place.name + (place.region ? ', ' + place.region : ''), done: true };
+    lines.push({ text: 'Downloading buildings and streets within ' + RADIUS + ' m…' }); setLog(lines);
+    let osm;
+    try { osm = await overpass(place.lat, place.lon); }
+    catch (e){ throw friendly(e, 'map'); }
+    const nb = (osm.elements || []).filter(e => e.tags && e.tags.building).length;
+    lines[1] = { text: 'Downloaded ' + (osm.elements || []).length.toLocaleString('en') + ' map objects', done: true };
+    lines.push({ text: 'Building ' + nb.toLocaleString('en') + ' buildings…' }); setLog(lines);
+    await new Promise(r => setTimeout(r, 30));
+    const W = buildWorld(osm, place);
+    if (W.buildingCount === 0 && W.roadPts.length === 0){ freeWorld(W); throw new Error('There are no mapped buildings or streets around ' + place.name + '. Try a town centre or a street name.'); }
+    W.spawn = chooseSpawn(W);
+    const old = world; world = W; if (old) freeWorld(old);
+    store.set('htr-last', q);
+    newRound();
+    lines[2] = { text: 'Built ' + W.buildingCount.toLocaleString('en') + ' buildings', done: true }; setLog(lines);
+    $('#readyName').textContent = place.name;
+    $('#readyRegion').textContent = place.region || 'Loaded from OpenStreetMap';
+    $('#fBuild').textContent = W.buildingCount.toLocaleString('en');
+    $('#fKm').textContent = (W.roadMeters/1000).toFixed(1);
+    $('#hudCity').textContent = place.name;
+    $('#pausePlace').textContent = place.name; $('#donePlace').textContent = place.name;
+    $('#keysDesk').hidden = isTouch; $('#keysTouch').hidden = !isTouch;
+    lastStreet = '';
+    state = 'ready'; show('ready');
+    setTimeout(() => $('#btnStart').focus({ preventScroll: true }), 50);
+  } catch (e){
+    state = 'start'; show('start'); setLog([]);
+    showError(e.message || String(e));
+  } finally {
+    loading = false; $('#btnLoad').disabled = false;
+  }
+}
+function friendly(e, stage){
+  if (e && (e.status === 429 || e.status === 504 || e.status === 503)) return new Error('The OpenStreetMap servers are busy right now. Wait a minute and try again.');
+  if (e && e.name === 'AbortError') return new Error('OpenStreetMap took too long to answer. Try again, or pick a smaller place.');
+  if (e && e.status) return new Error('OpenStreetMap answered with an error (' + e.status + '). Try again in a moment.');
+  return new Error('Couldn’t reach OpenStreetMap' + (stage === 'lookup' ? ' to look up the place' : ' to download the map') + '. Check your internet connection. If you opened this inside an app preview, open it in a regular browser instead.' + (e && e.message ? ' (' + e.message + ')' : ''));
+}
+
+function start(){
+  initAudio();
+  state = 'playing'; show(null);
+  if (!isTouch) lockPointer();
+}
+function lockPointer(){
+  try { const r = canvas.requestPointerLock && canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e){}
+}
+function pause(){
+  if (state !== 'playing') return;
+  state = 'paused'; holdFire = false; keys.clear(); joy = null; look = null; resetStick();
+  const left = targets.filter(t => t.alive).length;
+  $('#pauseInfo').innerHTML = '';
+  const t = document.createElement('span');
+  t.textContent = (TARGET_COUNT - left) + ' of ' + TARGET_COUNT + ' targets down · ' + fmtClock(roundTime) + ' on the clock';
+  $('#pauseInfo').appendChild(t);
+  syncSoundLabel(); show('pause');
+  if (document.pointerLockElement) document.exitPointerLock();
+}
+function finish(){
+  if (state !== 'playing') return;
+  state = 'done'; holdFire = false; keys.clear(); joy = null; look = null; resetStick();
+  if (document.pointerLockElement) document.exitPointerLock();
+  const key = 'htr-best-' + world.place.name.toLowerCase();
+  const prev = parseFloat(store.get(key));
+  const best = prev > 0 ? Math.min(prev, roundTime) : roundTime;
+  store.set(key, String(best));
+  $('#dTime').textContent = fmtTime(roundTime);
+  $('#dBest').textContent = fmtTime(best);
+  $('#dAcc').textContent = Math.round(hits/Math.max(1, shots)*100) + '%';
+  show('done');
+}
+function toStart(){
+  state = 'start'; setLog([]); showError(''); show('start');
+  setTimeout(() => { const i = $('#place'); i.focus({ preventScroll: true }); i.select(); }, 50);
+}
+
+/* =========================================================
+   Input
+   ========================================================= */
+const stick = $('#stick'), knob = $('#knob');
+function placeStick(){ stick.style.left = (joy.ox - 59) + 'px'; stick.style.bottom = 'auto'; stick.style.top = (joy.oy - 59) + 'px'; }
+function moveKnob(){ knob.style.transform = 'translate(' + joy.dx + 'px,' + joy.dy + 'px)'; }
+function resetStick(){ stick.style.left = ''; stick.style.top = ''; stick.style.bottom = ''; knob.style.transform = ''; }
+
+canvas.addEventListener('pointerdown', e => {
+  if (state !== 'playing') return;
+  if (e.pointerType === 'mouse'){
+    if (e.button !== 0) return;
+    if (document.pointerLockElement === canvas){ holdFire = true; shoot(); return; }
+    mouseDown = { x: e.clientX, y: e.clientY, moved: 0 };
+    lockPointer();
+    return;
+  }
+  if (!isTouch){ isTouch = true; document.body.classList.add('touch'); }
+  e.preventDefault();
+  if (e.clientX < innerWidth*0.45 && !joy){ joy = { id: e.pointerId, ox: e.clientX, oy: e.clientY, dx: 0, dy: 0 }; placeStick(); moveKnob(); }
+  else if (!look){ look = { id: e.pointerId, x: e.clientX, y: e.clientY }; }
+  try { canvas.setPointerCapture(e.pointerId); } catch (err){}
+});
+canvas.addEventListener('pointermove', e => {
+  if (state !== 'playing') return;
+  if (e.pointerType === 'mouse'){
+    if (document.pointerLockElement === canvas){ P.yaw += e.movementX*0.0022; P.pitch = clamp(P.pitch - e.movementY*0.0022, -1.35, 1.35); }
+    else if (mouseDown){ const dx = e.clientX - mouseDown.x, dy = e.clientY - mouseDown.y; mouseDown.moved += Math.abs(dx) + Math.abs(dy); mouseDown.x = e.clientX; mouseDown.y = e.clientY; P.yaw += dx*0.004; P.pitch = clamp(P.pitch - dy*0.004, -1.35, 1.35); }
+    return;
+  }
+  if (joy && e.pointerId === joy.id){
+    let dx = e.clientX - joy.ox, dy = e.clientY - joy.oy; const l = Math.hypot(dx, dy);
+    if (l > 50){ dx *= 50/l; dy *= 50/l; }
+    joy.dx = dx; joy.dy = dy; moveKnob();
+  } else if (look && e.pointerId === look.id){
+    P.yaw += (e.clientX - look.x)*0.0058; P.pitch = clamp(P.pitch - (e.clientY - look.y)*0.0058, -1.35, 1.35);
+    look.x = e.clientX; look.y = e.clientY;
+  }
+});
+function endPointer(e){
+  if (e.pointerType === 'mouse'){
+    holdFire = false;
+    if (mouseDown && mouseDown.moved < 6 && document.pointerLockElement !== canvas && state === 'playing') shoot();
+    mouseDown = null; return;
+  }
+  if (joy && e.pointerId === joy.id){ joy = null; resetStick(); }
+  if (look && e.pointerId === look.id) look = null;
+}
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', endPointer);
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+const fire = $('#btnFire');
+fire.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); holdFire = true; shoot(); });
+for (const ev of ['pointerup','pointercancel','pointerleave']) fire.addEventListener(ev, () => { holdFire = false; });
+
+document.addEventListener('pointerlockchange', () => {
+  const locked = document.pointerLockElement === canvas;
+  if (!locked && wasLocked && state === 'playing') pause();
+  wasLocked = locked;
+});
+window.addEventListener('keydown', e => {
+  if (state !== 'playing'){ return; }
+  if (e.code === 'Escape' || e.code === 'KeyP'){ pause(); return; }
+  if (e.code === 'Space'){ e.preventDefault(); if (!e.repeat){ holdFire = true; shoot(); } return; }
+  keys.add(e.code);
+  if (e.code.startsWith('Arrow')) e.preventDefault();
+});
+window.addEventListener('keyup', e => { keys.delete(e.code); if (e.code === 'Space') holdFire = false; });
+window.addEventListener('blur', () => { keys.clear(); holdFire = false; });
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+
+$('#placeForm').addEventListener('submit', e => { e.preventDefault(); loadPlace($('#place').value); });
+$('#chips').addEventListener('click', e => { const b = e.target.closest('.chip'); if (!b) return; $('#place').value = b.textContent; loadPlace(b.textContent); });
+$('#btnStart').addEventListener('click', start);
+$('#btnResume').addEventListener('click', start);
+$('#btnRestart').addEventListener('click', () => { newRound(); start(); });
+$('#btnAgain').addEventListener('click', () => { newRound(); start(); });
+for (const id of ['#btnOther1','#btnOther2','#btnOther3']) $(id).addEventListener('click', toStart);
+$('#btnMenu').addEventListener('click', pause);
+$('#btnSound').addEventListener('click', () => { muted = !muted; store.set('htr-muted', muted ? '1' : '0'); syncSoundLabel(); });
+
+/* =========================================================
+   Boot
+   ========================================================= */
+function resize(){
+  const dpr = Math.min(window.devicePixelRatio || 1, isTouch ? 1.5 : 2);
+  canvas.width = Math.max(1, Math.round(innerWidth*dpr)); canvas.height = Math.max(1, Math.round(innerHeight*dpr));
+}
+window.addEventListener('resize', resize);
+resize();
+
+if (!gl){
+  showError('This browser can’t show 3D graphics (WebGL is off or unsupported). Try a recent Chrome, Safari or Firefox.');
+  $('#btnLoad').disabled = true;
+} else {
+  try { initGL(); } catch (e){ showError('3D setup failed: ' + e.message); }
+  const last = store.get('htr-last'); if (last) $('#place').value = last;
+  let prev = performance.now();
+  const frame = now => {
+    requestAnimationFrame(frame);
+    const dt = Math.min(0.05, Math.max(0, (now - prev)/1000)); prev = now; time += dt;
+    if (state === 'playing') update(dt);
+    else if (world && (state === 'ready' || state === 'loading' || state === 'start')) P.yaw += dt*0.08;
+    render(dt);
+    if (state === 'playing') updateHUD(dt);
+  };
+  requestAnimationFrame(frame);
+}
+window.__htr = { get state(){ return state; }, get world(){ return world; }, get targets(){ return targets; }, P, loadPlace, shoot, start };
+})();
+</script>
+</body>
+</html>
